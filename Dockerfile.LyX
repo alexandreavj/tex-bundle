@@ -1,0 +1,39 @@
+# TeX Bundle - LyX Environment
+# by Alexandre Vaz Jacob
+
+# This Dockerfile builds a container with LyX and TeX Live installed.
+# The LyX GUI is accessible via a web browser using the capabilities of the Webtop image.
+
+# Use apt-based Webtop image as base. Override at build time, e.g.:
+#   --build-arg WEBTOP_TAG=ubuntu-xfce
+ARG WEBTOP_TAG=ubuntu-lxqt
+FROM lscr.io/linuxserver/webtop:${WEBTOP_TAG}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Select the installation type with a build argument:
+#   - "full"           installs LyX and TeX Live (full) with recommended packages (default)
+#   - "no-recommends"  installs LyX and TeX Live (full) without recommended packages
+#   - "minimal"        installs LyX and a small TeX Live subset without recommended packages
+# Override at build time, e.g.:
+#   --build-arg INSTALLATION_TYPE=full
+#   --build-arg INSTALLATION_TYPE=no-recommends
+#   --build-arg INSTALLATION_TYPE=minimal
+ARG INSTALLATION_TYPE="full"
+
+# Single layer: update, install, clean up (avoids stale apt lists and bloated layers).
+RUN set -e; \
+    apt-get update; \
+    if [ "$INSTALLATION_TYPE" = "full" ]; then \
+        apt-get install -y lyx texlive-full; \
+    elif [ "$INSTALLATION_TYPE" = "no-recommends" ]; then \
+        apt-get install -y --no-install-recommends lyx texlive-full; \
+    elif [ "$INSTALLATION_TYPE" = "minimal" ]; then \
+        apt-get install -y --no-install-recommends lyx \
+            texlive-latex-base texlive-latex-recommended texlive-fonts-recommended; \
+    else \
+        echo "Invalid INSTALLATION_TYPE: $INSTALLATION_TYPE. Valid options are: full, no-recommends, minimal." >&2; \
+        exit 1; \
+    fi; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
