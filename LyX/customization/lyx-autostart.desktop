@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=LyX
+Comment=Start LyX when the desktop session starts
+Exec=/usr/bin/lyx
+Icon=lyx
+Terminal=false
