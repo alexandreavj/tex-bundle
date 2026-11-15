@@ -1,0 +1,76 @@
+# TeX Bundle - TeXstudio Environment
+# by Alexandre Vaz Jacob
+#
+# Usage:
+#   cp .env.example .env    # Change the variables in .env as needed (especially WEBTOP_PASSWORD)
+#   chmod 600 .env
+#   docker compose up -d --build
+#
+# Then, open https://localhost:3001 to access the TeXstudio environment through Webtop's browser-accessible
+# GUI (the HTTPS connection uses a self-signed certificate, so it will be needed to accept the warning).
+
+services:
+  tex-bundle-texstudio:
+    build:
+      context: .
+      dockerfile: Dockerfile.TeXstudio
+      args:
+        WEBTOP_TAG:         ${WEBTOP_TAG:-ubuntu-lxqt}
+        INSTALLATION_TYPE:  ${INSTALLATION_TYPE:-full}          # full | no-recommends | minimal
+        WALLPAPER_FILE:     ${WALLPAPER_FILE:-wallpaper.svg}    # file name inside ./customization/
+    image:          tex-bundle-texstudio
+    container_name: tex-bundle-texstudio
+    restart:        unless-stopped
+
+    # ========== ENVIRONMENT ==========
+    environment:
+      # Use the user/group the host runs as so files in the shared folder get that ownership
+      #   Linux rootful Docker/macOS/Windows(WSL) `id -u`/`id -g` (defaults to 1000/1000)
+      #   Linux rootless Docker: `0` since container root maps to host user (defaults to 1000/1000)
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Etc/UTC}
+      # Web login
+      - CUSTOM_USER=${WEBTOP_USER:-TexBundle}
+      - PASSWORD=${WEBTOP_PASSWORD:-}
+
+    # ========== NETWORKING ==========
+    ports:
+      # Bound to localhost only.
+      # To make the TeXstudio environment accessible from the local network, use "3001:3001".
+      # It is recommended to use a TLS reverse proxy or VPN for security, as well as setting a strong password in .env.
+      - "127.0.0.1:3001:3001"           # HTTPS web UI
+
+    # ========== VOLUMES ==========
+    volumes:
+      # Persists desktop/TeXstudio configuration (the container user's home is /config)
+      - texstudio-config:/config
+      # Host folder synced with the container's /config/Projects.
+      # Allows to edit TeXstudio projects on the host and have them available in the container.
+      - ${PROJECTS_DIR:-./projects}:/config/Projects
+
+    # ========== HARDENING ==========
+    # The only capabilities added are those needed for the container to function properly, while all others are dropped.
+    # Some cosmetic failures may occur with the reduced capability set, but the container will still function properly for its intended purpose.
+    # NOTE: No seccomp profile is set due to the complexity of the base image, TeXstudio environment and its dependencies,
+    #       as well as of the great number of execution paths that can be taken.
+    #       The default Docker seccomp profile is used, which is a good balance between security and functionality.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+
+    # ========== RESOURCE CAPS ==========
+    mem_limit: ${MEM_LIMIT:-4g}
+    cpus: ${CPUS:-2}
+    pids_limit: ${PIDS_LIMIT:-512}
+
+    shm_size: "1gb" # recommended by the Webtop docs for desktop images
+
+volumes:
+  texstudio-config:

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=TeXstudio
+Comment=Start TeXstudio when the desktop session starts
+Exec=/usr/bin/texstudio
+Icon=texstudio
+Terminal=false
